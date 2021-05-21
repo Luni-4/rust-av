@@ -7,7 +7,7 @@ pub use crate::common::CodecList;
 use crate::error::*;
 
 /// Used to interact with a decoder.
-pub trait Decoder: Send + Sync {
+pub trait Decoder: DecoderClone + Send + Sync {
     // TODO support codec configuration using set_option
     // fn open(&mut self) -> Result<()>;
     /// Saves the extra data contained in a codec.
@@ -38,8 +38,30 @@ pub struct Descr {
     // TODO more fields regarding capabilities
 }
 
+/// Used to clone a decoder.
+pub trait DecoderClone {
+    /// Clones a boxed decoder.
+    fn clone_box(&self) -> Box<dyn Decoder>;
+}
+
+impl<T> DecoderClone for T
+where
+    T: 'static + Decoder + Clone,
+{
+    fn clone_box(&self) -> Box<dyn Decoder> {
+        Box::new(self.clone())
+    }
+}
+
+impl Clone for Box<dyn Decoder> {
+    fn clone(&self) -> Box<dyn Decoder> {
+        self.clone_box()
+    }
+}
+
 /// Auxiliary structure to encapsulate a decoder object and
 /// its additional data.
+#[derive(Clone)]
 pub struct Context {
     dec: Box<dyn Decoder>,
     // TODO: Queue up packets/frames
@@ -127,6 +149,7 @@ mod test {
         use crate::data::pixel::Formaton;
         use std::sync::Arc;
 
+        #[derive(Clone)]
         struct Dec {
             state: usize,
             format: Option<Arc<Formaton>>,
