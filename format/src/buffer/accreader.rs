@@ -12,6 +12,7 @@ use std::iter;
 use std::iter::Iterator;
 
 /// Partial consumption buffer for any reader.
+#[derive(Clone)]
 pub struct AccReader<R> {
     inner: R,
     buf: Vec<u8>,
@@ -85,7 +86,7 @@ impl<R: Read + Seek> AccReader<R> {
     }
 }
 
-impl<R: Read + Seek + Send + Sync> Buffered for AccReader<R> {
+impl<R: Read + Seek + Send + Sync + Clone + 'static> Buffered for AccReader<R> {
     fn data(&self) -> &[u8] {
         &self.buf[self.pos..self.end]
     }

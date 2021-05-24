@@ -33,7 +33,7 @@ pub enum Event {
 }
 
 /// Used to implement demuxing operations.
-pub trait Demuxer: Send + Sync {
+pub trait Demuxer: DemuxerClone + Send + Sync {
     /// Reads stream headers and global information from a data structure
     /// implementing the `Buffered` trait.
     ///
@@ -43,8 +43,30 @@ pub trait Demuxer: Send + Sync {
     fn read_event(&mut self, buf: &mut dyn Buffered) -> Result<(SeekFrom, Event)>;
 }
 
+/// Used to clone a demuxer.
+pub trait DemuxerClone {
+    /// Clones a boxed demuxer.
+    fn clone_box(&self) -> Box<dyn Demuxer>;
+}
+
+impl<T> DemuxerClone for T
+where
+    T: 'static + Demuxer + Clone,
+{
+    fn clone_box(&self) -> Box<dyn Demuxer> {
+        Box::new(self.clone())
+    }
+}
+
+impl Clone for Box<dyn Demuxer> {
+    fn clone(&self) -> Box<dyn Demuxer> {
+        self.clone_box()
+    }
+}
+
 /// Auxiliary structure to encapsulate a demuxer object and
 /// its additional data.
+#[derive(Clone)]
 pub struct Context {
     demuxer: Box<dyn Demuxer>,
     reader: Box<dyn Buffered>,
@@ -235,6 +257,7 @@ mod test {
         d: Descr,
     }
 
+    #[derive(Clone)]
     struct DummyDemuxer {}
 
     impl Demuxer for DummyDemuxer {
